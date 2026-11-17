@@ -2,8 +2,9 @@ name: Flight Radar Dashboard
 
 on:
   schedule:
-    # 每天 北京时间 08:25 和 16:25 自动刷新看板数据
-    - cron: '25 0,8 * * *'
+  # GitHub 使用 UTC 時間（北京時間 = UTC + 8）
+  # 下面代表：每天 北京時間 09:00 和 13:00 各自動運行一次
+  - cron: '0 1,5 * * *'
   workflow_dispatch:
 
 permissions:
