@@ -1,0 +1,30 @@
+name: Flight Explore Digest
+
+on:
+  schedule:
+    # GitHub 使用 UTC 时间（北京时间 = UTC + 8）
+    # 下面代表：每周五 北京时间 18:17 自动运行一次（下班前抽一次周末盲盒）
+    - cron: '17 10 * * *'
+  workflow_dispatch: # 允许你在网页端随时手动点按钮抽一次
+
+jobs:
+  explore-flights:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run explore
+        env:
+          TRAVELPAYOUTS_TOKEN: ${{ secrets.TRAVELPAYOUTS_TOKEN }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: python explore.py
