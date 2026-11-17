@@ -52,16 +52,20 @@ def explore_deals():
     params = {
         "origin": ORIGIN,
         "destination": "-",
-        "value_min": 100,
+        "value_min": 1,
         "value_max": MAX_BUDGET,
         "one_way": "true" if ONE_WAY else "false",
         "direct": "true" if DIRECT_ONLY else "false",
+        "locale": "en",
         "market": "us",
         "currency": "cny",
-        "limit": 50,
+        "limit": 30,          # 官方上限为 30
+        "page": 1,
         "token": TP_TOKEN,
     }
     resp = requests.get(url, params=params, timeout=20)
+    if resp.status_code != 200:
+        print(f"API 返回异常 ({resp.status_code}): {resp.text}")
     resp.raise_for_status()
     return resp.json().get("data", [])
 
