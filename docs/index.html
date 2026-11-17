@@ -3,42 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>上海出发特价机票雷达看板</title>
+  <title>上海双向特价机票雷达看板</title>
   <style>
     :root {
       --bg: #f5f7fb; --card: #ffffff; --text: #1e293b; --muted: #64748b;
-      --border: #e2e8f0; --primary: #2563eb; --danger: #dc2626; --success: #059669;
+      --border: #e2e8f0; --primary: #2563eb; --danger: #dc2626; --success: #059669; --purple: #7c3aed;
     }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
-    .container { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
-    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 18px; }
+    .container { max-width: 1220px; margin: 0 auto; padding: 20px 16px 60px; }
+    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
     h1 { margin: 0; font-size: 22px; }
-    .meta { font-size: 13px; color: var(--muted); }
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    /* 方向切换大栏 */
+    .dir-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .dir-btn {
+      flex: 1; min-width: 160px; padding: 12px 16px; border-radius: 10px; border: 2px solid var(--border);
+      background: var(--card); color: var(--text); font-size: 15px; font-weight: 600; cursor: pointer; text-align: center;
+      transition: all 0.15s ease;
+    }
+    .dir-btn.active[data-dir="outbound"] { border-color: var(--primary); background: #eff6ff; color: var(--primary); }
+    .dir-btn.active[data-dir="inbound"] { border-color: var(--purple); background: #f5f3ff; color: var(--purple); }
+    .dir-btn.active[data-dir="both"] { border-color: #0f766e; background: #f0fdfa; color: #0f766e; }
+
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
     .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
     .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
     .stat-value { font-size: 22px; font-weight: 700; }
+
     .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
     .tab-btn { border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 8px 16px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 500; }
     .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-    .filters { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; }
+
+    .filters { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; align-items: end; }
     .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
     .field input, .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: #fff; }
     .check-row { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; font-size: 14px; cursor: pointer; }
     .check-row input { width: auto; }
-    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--muted); flex-wrap: wrap; gap: 8px; }
     .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+    table { width: 100%; border-collapse: collapse; min-width: 820px; }
     th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
     th { background: #f8fafc; font-size: 12px; color: var(--muted); font-weight: 600; }
     tr:hover td { background: #f8fafc; }
+
     .price { font-size: 16px; font-weight: 700; color: var(--danger); }
     .badge { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-left: 4px; }
     .b-radar { background: #fee2e2; color: #b91c1c; }
     .b-pop { background: #dbeafe; color: #1d4ed8; }
     .b-ow { background: #f1f5f9; color: #475569; }
     .b-rt { background: #ecfdf5; color: #047857; }
+    .b-out { background: #eff6ff; color: #1d4ed8; margin-left: 0; margin-right: 6px; }
+    .b-in { background: #f5f3ff; color: #6d28d9; margin-left: 0; margin-right: 6px; }
     .btn-link { display: inline-block; padding: 5px 10px; background: var(--primary); color: #fff; text-decoration: none; border-radius: 6px; font-size: 12px; }
     .btn-link:hover { opacity: 0.9; }
     .empty { text-align: center; padding: 40px; color: var(--muted); }
@@ -48,17 +66,23 @@
   <div class="container">
     <header>
       <div>
-        <h1>✈️ 上海出发特价机票雷达看板</h1>
+        <h1>✈️ 上海双向特价机票雷达看板</h1>
         <div class="meta" id="updatedAt">正在加载最新数据...</div>
       </div>
       <button class="tab-btn" onclick="resetFilters()">重置筛选</button>
     </header>
 
+    <div class="dir-bar">
+      <button class="dir-btn active" data-dir="outbound" onclick="setDir('outbound', this)">🛫 上海出发（SHA → 各地）</button>
+      <button class="dir-btn" data-dir="inbound" onclick="setDir('inbound', this)">🛬 飞往上海（各地 → SHA）</button>
+      <button class="dir-btn" data-dir="both" onclick="setDir('both', this)">🔄 双向对照（去程 + 回程）</button>
+    </div>
+
     <div class="stats">
-      <div class="stat-card"><div class="stat-label">收录报价总数</div><div class="stat-value" id="statTotal">-</div></div>
+      <div class="stat-card"><div class="stat-label">当前方向报价数</div><div class="stat-value" id="statTotal">-</div></div>
       <div class="stat-card"><div class="stat-label">🔥 异常低价数</div><div class="stat-value" id="statAnomalies" style="color:var(--danger)">-</div></div>
       <div class="stat-card"><div class="stat-label">最低单程价</div><div class="stat-value" id="statMinOW" style="color:var(--success)">-</div></div>
-      <div class="stat-card"><div class="stat-label">最低往返价</div><div class="stat-value" id="statMinRT">-</div></div>
+      <div class="stat-card"><div class="stat-label">最低 3-7 天往返</div><div class="stat-value" id="statMinRT">-</div></div>
     </div>
 
     <div class="tabs">
@@ -69,7 +93,7 @@
 
     <div class="filters">
       <div class="field">
-        <label>目的地 / 航司关键词</label>
+        <label>城市 / 机场 / 航司</label>
         <input type="text" id="fKeyword" placeholder="如：大阪、OSA、东京、9C" oninput="render()" />
       </div>
       <div class="field">
@@ -79,9 +103,20 @@
       <div class="field">
         <label>行程类型</label>
         <select id="fTripType" onchange="render()">
-          <option value="all">全部（单程 + 往返）</option>
+          <option value="all">全部（单程 + 3-7天往返）</option>
           <option value="ow">仅看单程</option>
-          <option value="rt">仅看往返</option>
+          <option value="rt">仅看 3-7 天往返</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>往返停留天数</label>
+        <select id="fStayDays" onchange="render()">
+          <option value="all">不限（全部 / 3-7天）</option>
+          <option value="3">往返 3 天</option>
+          <option value="4">往返 4 天</option>
+          <option value="5">往返 5 天</option>
+          <option value="6">往返 6 天</option>
+          <option value="7">往返 7 天</option>
         </select>
       </div>
       <div class="field">
@@ -117,15 +152,15 @@
 
     <div class="toolbar">
       <span id="resultCount">共 0 条匹配结果</span>
-      <span>💡 数据每逢定时任务自动更新</span>
+      <span>💡 提示：切换到「双向对照」并搜索城市名（如“大阪”），可同时看去程与回程日期比价</span>
     </div>
 
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>目的地</th>
-            <th>类型</th>
+            <th>航线方向</th>
+            <th>类型 / 天数</th>
             <th>价格 &amp; 折扣基准</th>
             <th>出发 / 返程日期</th>
             <th>机场 &amp; 航司</th>
@@ -140,12 +175,21 @@
 
   <script>
     let allDeals = [];
+    let activeDir = "outbound";
     let activeTab = "all";
 
     function esc(str) {
       return String(str || "").replace(/[&<>"']/g, s => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
       }[s]));
+    }
+
+    function setDir(dir, btn) {
+      activeDir = dir;
+      document.querySelectorAll(".dir-bar .dir-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      updateStats();
+      render();
     }
 
     function setTab(tab, btn) {
@@ -162,6 +206,7 @@
       document.getElementById("fKeyword").value = "";
       document.getElementById("fMaxPrice").value = "";
       document.getElementById("fTripType").value = "all";
+      document.getElementById("fStayDays").value = "all";
       document.getElementById("fDirect").value = "all";
       document.getElementById("fDateStart").value = "";
       document.getElementById("fDateEnd").value = "";
@@ -175,10 +220,21 @@
       return isNaN(d) ? { label: "", day: -1 } : { label: days[d.getDay()], day: d.getDay() };
     }
 
+    function updateStats() {
+      const dirDeals = allDeals.filter(d => activeDir === "both" || d.direction === activeDir);
+      const owPrices = dirDeals.filter(d => d.one_way).map(d => d.price);
+      const rtPrices = dirDeals.filter(d => !d.one_way).map(d => d.price);
+      document.getElementById("statTotal").textContent = dirDeals.length;
+      document.getElementById("statAnomalies").textContent = dirDeals.filter(d => d.is_anomaly).length;
+      document.getElementById("statMinOW").textContent = owPrices.length ? `¥${Math.min(...owPrices)}` : "-";
+      document.getElementById("statMinRT").textContent = rtPrices.length ? `¥${Math.min(...rtPrices)}` : "-";
+    }
+
     function render() {
       const kw = document.getElementById("fKeyword").value.trim().toLowerCase();
       const maxP = Number(document.getElementById("fMaxPrice").value) || Infinity;
       const tripType = document.getElementById("fTripType").value;
+      const stayDaysVal = document.getElementById("fStayDays").value;
       const directMode = document.getElementById("fDirect").value;
       const dStart = document.getElementById("fDateStart").value;
       const dEnd = document.getElementById("fDateEnd").value;
@@ -186,15 +242,19 @@
       const sortBy = document.getElementById("fSort").value;
 
       let list = allDeals.filter(d => {
+        if (activeDir !== "both" && d.direction !== activeDir) return false;
         if (activeTab === "radar" && !d.is_anomaly) return false;
         if (activeTab === "popular" && !d.is_popular) return false;
         if (kw) {
-          const hay = `${d.dest_name} ${d.destination} ${d.dest_airport} ${d.airline}`.toLowerCase();
+          const hay = `${d.origin_name} ${d.dest_name} ${d.origin} ${d.destination} ${d.origin_airport} ${d.dest_airport} ${d.airline}`.toLowerCase();
           if (!hay.includes(kw)) return false;
         }
         if (d.price > maxP) return false;
         if (tripType === "ow" && !d.one_way) return false;
         if (tripType === "rt" && d.one_way) return false;
+        if (stayDaysVal !== "all") {
+          if (d.one_way || String(d.stay_days) !== stayDaysVal) return false;
+        }
         if (directMode === "direct" && d.transfers > 0) return false;
         if (dStart && d.dep_date < dStart) return false;
         if (dEnd && d.dep_date > dEnd) return false;
@@ -225,17 +285,25 @@
       }
       emptyTip.style.display = "none";
 
-      // 最多渲染前 300 条保持浏览器丝滑
       tbody.innerHTML = list.slice(0, 300).map(d => {
         const wd = getWeekdayLabel(d.dep_date).label;
         const dateHtml = d.one_way
           ? `${esc(d.dep_date)} <span style="color:var(--muted)">(${wd})</span>`
           : `${esc(d.dep_date)} (${wd})<br><span style="color:var(--muted);font-size:12px;">返: ${esc(d.ret_date)}</span>`;
 
+        const dirBadge = d.direction === "outbound"
+          ? `<span class="badge b-out">出发</span>`
+          : `<span class="badge b-in">来沪</span>`;
+        const routeTitle = `${esc(d.origin_name)} → ${esc(d.dest_name)}`;
+
         const badges = [
           d.is_anomaly ? `<span class="badge b-radar">${d.discount_pct > 0 ? d.discount_pct + "% OFF" : "促销"}</span>` : "",
           d.is_popular ? `<span class="badge b-pop">热门</span>` : "",
         ].join("");
+
+        const typeHtml = d.one_way
+          ? `<span class="badge b-ow">单程</span>`
+          : `<span class="badge b-rt">往返 · ${d.stay_days}天</span>`;
 
         const baseHtml = d.baseline_price
           ? `<div style="font-size:12px;color:var(--muted)">中位均价 ¥${d.baseline_price}${d.save_amount > 0 ? ` · 省¥${d.save_amount}` : ""}</div>`
@@ -244,8 +312,8 @@
         const stopTxt = d.transfers === 0 ? "直飞" : `${d.transfers}经停`;
         return `
           <tr>
-            <td><strong>${esc(d.dest_name)}</strong> <span style="color:var(--muted)">(${esc(d.destination)})</span>${badges}</td>
-            <td><span class="badge ${d.one_way ? "b-ow" : "b-rt"}">${d.one_way ? "单程" : "往返"}</span></td>
+            <td>${dirBadge}<strong>${routeTitle}</strong>${badges}</td>
+            <td>${typeHtml}</td>
             <td><span class="price">¥${d.price}</span>${baseHtml}</td>
             <td>${dateHtml}</td>
             <td>${esc(d.origin_airport)} → ${esc(d.dest_airport)}<br><span style="font-size:12px;color:var(--muted)">${esc(d.airline)} · ${stopTxt}</span></td>
@@ -258,16 +326,13 @@
     fetch("./data.json?t=" + Date.now())
       .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(data => {
-        document.getElementById("updatedAt").textContent = `最近更新：${data.updated_at || "-"}`;
-        document.getElementById("statTotal").textContent = data.stats?.total ?? "-";
-        document.getElementById("statAnomalies").textContent = data.stats?.anomalies ?? "-";
-        document.getElementById("statMinOW").textContent = data.stats?.min_oneway ? `¥${data.stats.min_oneway}` : "-";
-        document.getElementById("statMinRT").textContent = data.stats?.min_roundtrip ? `¥${data.stats.min_roundtrip}` : "-";
+        document.getElementById("updatedAt").textContent = `最近更新：${data.updated_at || "-"}（往返已过滤为 3-7 天）`;
         allDeals = data.deals || [];
+        updateStats();
         render();
       })
       .catch(err => {
-        document.getElementById("updatedAt").textContent = "加载数据失败，请确保通过 Vercel / GitHub Pages 访问，且已运行过一次 radar.yml (" + err.message + ")";
+        document.getElementById("updatedAt").textContent = "加载数据失败，请确保通过 Vercel 访问且已运行 radar.yml (" + err.message + ")";
       });
   </script>
 </body>
