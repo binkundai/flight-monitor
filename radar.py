@@ -1,6 +1,8 @@
 import json
 import os
 import statistics
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta, timezone
 import requests
 
@@ -13,13 +15,13 @@ HOME_CITY = "SHA"
 OUTPUT_FILE = "docs/data.json"
 TP_MARKET = "us"
 
-# 往返停留天数范围（3-7天）
 ROUNDTRIP_MIN_DAYS = 3
 ROUNDTRIP_MAX_DAYS = 7
 
-# 重点深度扫描城市（双向各扫未来6个月，保证常用城市有充足的3-7天往返与单程日期）
-DEEP_SCAN_CITIES = ["OSA", "TYO", "FUK", "SEL", "HKG", "BKK", "SIN", "KMG"]
-DEEP_MONTHS = 6
+# 重点深度扫描城市（已加入 KUL 吉隆坡、NGO 名古屋；想加其他城市直接填三字码即可）
+DEEP_SCAN_CITIES = ["OSA", "TYO", "FUK", "SEL", "HKG", "BKK", "SIN", "KUL", "NGO", "KMG"]
+DEEP_ONEWAY_MONTHS = 12     # 深度城市单程扫未来 12 个月
+DEEP_ROUNDTRIP_MONTHS = 6   # 深度城市往返扫未来 6 个月
 
 FALLBACK_CITIES = {
     "SHA": "上海",
@@ -125,6 +127,11 @@ def fetch_special_offers(origin_code):
     except Exception:
         return []
 
+def run_deep_task(task):
+    time.sleep(0.08)  # 温和限流，远低于 600 req/min
+    items = fetch_prices_for_dates(task["params"])
+    return task, items
+
 def main():
     cities = get_city_names()
     today_str = date.today().isoformat()
@@ -141,7 +148,6 @@ def main():
         if len(origin_code) != 3 or len(dest_code) != 3:
             return
 
-        # 确定对端城市（出发看目的地，飞来上海看出发地）
         other_city = dest_code if direction == "outbound" else origin_code
         if other_city == HOME_CITY:
             return
@@ -156,7 +162,6 @@ def main():
         ret_raw = item.get("return_at") or ""
         ret_date = ret_raw[:10] if (not one_way and ret_raw) else ""
 
-        # 往返严格过滤为 3~7 天
         stay_days = None
         if not one_way:
             if not ret_date:
@@ -195,7 +200,7 @@ def main():
         else:
             records[uid] = {
                 "id": uid,
-                "direction": direction,         # outbound=上海出发, inbound=飞往上海
+                "direction": direction,
                 "origin": origin_code,
                 "destination": dest_code,
                 "origin_name": cities.get(origin_code, origin_code),
@@ -222,20 +227,16 @@ def main():
                 "note": note,
             }
 
-    # ================= A. 上海出发 (outbound) =================
-    # 1. 热门单程
+    # A. 上海出发全网榜单
     for idx, it in enumerate(fetch_prices_for_dates({
         "origin": HOME_CITY, "sorting": "route", "unique": "true",
         "one_way": "true", "direct": "false", "limit": 100
     }), start=1):
         upsert_deal(it, one_way=True, direction="outbound", default_origin=HOME_CITY, is_popular=True, pop_rank=idx)
 
-    # 2. v1 热门方向
     for idx, (_, it) in enumerate(fetch_city_directions(HOME_CITY).items(), start=1):
-        has_ret = bool(it.get("return_at"))
-        upsert_deal(it, one_way=not has_ret, direction="outbound", default_origin=HOME_CITY, is_popular=True, pop_rank=idx)
+        upsert_deal(it, one_way=not bool(it.get("return_at")), direction="outbound", default_origin=HOME_CITY, is_popular=True, pop_rank=idx)
 
-    # 3. 全网低价单程 & 全网3-7天往返（往返不设 unique=true，以免只返回超长天数被过滤光）
     for page in (1, 2):
         for it in fetch_prices_for_dates({
             "origin": HOME_CITY, "sorting": "price", "unique": "true",
@@ -249,12 +250,10 @@ def main():
     }):
         upsert_deal(it, one_way=False, direction="outbound", default_origin=HOME_CITY)
 
-    # 4. 官方促销
     for it in fetch_special_offers(HOME_CITY):
         upsert_deal(it, one_way=not bool(it.get("return_at")), direction="outbound", default_origin=HOME_CITY, is_special=True, note=it.get("title", "官方促销"))
 
-    # ================= B. 飞往上海 (inbound) =================
-    # 1. 全网飞往上海热门 & 低价单程
+    # B. 飞往上海全网榜单
     for idx, it in enumerate(fetch_prices_for_dates({
         "destination": HOME_CITY, "sorting": "route", "unique": "false",
         "one_way": "true", "direct": "false", "limit": 500
@@ -267,33 +266,49 @@ def main():
     }):
         upsert_deal(it, one_way=True, direction="inbound", default_dest=HOME_CITY)
 
-    # 2. 全网飞往上海 3-7天往返
     for it in fetch_prices_for_dates({
         "destination": HOME_CITY, "sorting": "price", "unique": "false",
         "one_way": "false", "direct": "false", "limit": 1000
     }):
         upsert_deal(it, one_way=False, direction="inbound", default_dest=HOME_CITY)
 
-    # ================= C. 重点城市未来6个月双向深度扫描 =================
-    months = get_next_months(DEEP_MONTHS)
+    # C. 重点城市深度按月扫描（单程 12 个月 + 往返 6 个月，并发拉取）
+    deep_tasks = []
+    ow_months = get_next_months(DEEP_ONEWAY_MONTHS)
+    rt_months = get_next_months(DEEP_ROUNDTRIP_MONTHS)
+
     for city in DEEP_SCAN_CITIES:
-        for month in months:
-            for ow in (True, False):
-                # 出发: SHA -> city
-                for it in fetch_prices_for_dates({
-                    "origin": HOME_CITY, "destination": city, "departure_at": month,
-                    "one_way": "true" if ow else "false", "direct": "false", "sorting": "price", "limit": 100
-                }):
-                    upsert_deal(it, one_way=ow, direction="outbound", default_origin=HOME_CITY, default_dest=city, is_popular=True, pop_rank=50)
+        for month in ow_months:
+            deep_tasks.append({
+                "direction": "outbound", "one_way": True, "origin": HOME_CITY, "dest": city,
+                "params": {"origin": HOME_CITY, "destination": city, "departure_at": month, "one_way": "true", "direct": "false", "sorting": "price", "limit": 100}
+            })
+            deep_tasks.append({
+                "direction": "inbound", "one_way": True, "origin": city, "dest": HOME_CITY,
+                "params": {"origin": city, "destination": HOME_CITY, "departure_at": month, "one_way": "true", "direct": "false", "sorting": "price", "limit": 100}
+            })
+        for month in rt_months:
+            deep_tasks.append({
+                "direction": "outbound", "one_way": False, "origin": HOME_CITY, "dest": city,
+                "params": {"origin": HOME_CITY, "destination": city, "departure_at": month, "one_way": "false", "direct": "false", "sorting": "price", "limit": 100}
+            })
+            deep_tasks.append({
+                "direction": "inbound", "one_way": False, "origin": city, "dest": HOME_CITY,
+                "params": {"origin": city, "destination": HOME_CITY, "departure_at": month, "one_way": "false", "direct": "false", "sorting": "price", "limit": 100}
+            })
 
-                # 回程/来沪: city -> SHA
-                for it in fetch_prices_for_dates({
-                    "origin": city, "destination": HOME_CITY, "departure_at": month,
-                    "one_way": "true" if ow else "false", "direct": "false", "sorting": "price", "limit": 100
-                }):
-                    upsert_deal(it, one_way=ow, direction="inbound", default_origin=city, default_dest=HOME_CITY, is_popular=True, pop_rank=50)
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = [executor.submit(run_deep_task, t) for t in deep_tasks]
+        for fut in as_completed(futures):
+            t, items = fut.result()
+            for it in items:
+                upsert_deal(
+                    it, one_way=t["one_way"], direction=t["direction"],
+                    default_origin=t["origin"], default_dest=t["dest"],
+                    is_popular=True, pop_rank=50
+                )
 
-    # ================= D. 计算各自方向的中位数基准与异常低价 =================
+    # D. 计算中位数基准与异常低价
     grouped_prices = {}
     for rec in records.values():
         gkey = (rec["direction"], rec["city"], rec["one_way"])
@@ -343,7 +358,6 @@ def main():
         json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
     print(f"已写入 {OUTPUT_FILE}：总计 {len(all_deals)} 条（出发 {out_cnt} / 飞来 {in_cnt}），异常低价 {anom_cnt} 条")
 
-    # Telegram 精简日报（同时汇总上海出发 + 飞往上海）
     if TG_BOT_TOKEN and TG_CHAT_ID:
         out_top = sorted([d for d in all_deals if d["direction"] == "outbound" and d["is_anomaly"]], key=lambda x: (-x["discount_pct"], x["price"]))[:3]
         in_top = sorted([d for d in all_deals if d["direction"] == "inbound" and d["is_anomaly"]], key=lambda x: (-x["discount_pct"], x["price"]))[:3]
@@ -359,7 +373,7 @@ def main():
                 t_txt = "单程" if d["one_way"] else f"往返{d['stay_days']}天"
                 lines.append(f"• {d['origin_name']}→ [{t_txt}] ¥{d['price']} ({d['dep_date']} · 省{d['discount_pct']}%)")
         if DASHBOARD_URL:
-            lines.append(f"\n📊 双向筛选看板：{DASHBOARD_URL}")
+            lines.append(f"\n📊 双向筛选 & 日历看板：{DASHBOARD_URL}")
         requests.post(
             f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage",
             json={"chat_id": TG_CHAT_ID, "text": "\n".join(lines), "disable_web_page_preview": True},
