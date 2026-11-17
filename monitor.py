@@ -5,24 +5,23 @@ import requests
 
 HISTORY_FILE = "history.json"
 TP_TOKEN = os.environ["TRAVELPAYOUTS_TOKEN"]
-SERPAPI_KEY = os.environ.get("SERPAPI_KEY")  # 可选：留空则仅使用 Travelpayouts 推送
+SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 FEISHU_WEBHOOK = os.environ.get("FEISHU_WEBHOOK")
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 
 MONTHS_AHEAD = 12
-PRICE_DROP_STEP = 30          # 同日期降价至少 30 元才再次推送
-MAX_VERIFY_PER_ROUTE = 3      # 每条航线每次最多用 SerpApi 复核前 3 个最低价，省额度
+PRICE_DROP_STEP = 30
+MAX_VERIFY_PER_ROUTE = 3
+TP_MARKET = "us"  # 可尝试 "us" / "cn" / "ru"
 
-# 4 个单向监控方向（可按直飞/中转和税费差异微调阈值）
 WATCH_ROUTES = [
-    {"name": "上海 -> 大阪", "from": "SHA", "to": "OSA", "max_price": 2000, "max_stops": 0},
-    {"name": "大阪 -> 上海", "from": "OSA", "to": "SHA", "max_price": 800, "max_stops": 0},
-    {"name": "上海 -> 东京", "from": "SHA", "to": "TYO", "max_price": 800, "max_stops": 0},
-    {"name": "东京 -> 上海", "from": "TYO", "to": "SHA", "max_price": 800, "max_stops": 0},
+    {"name": "上海 -> 大阪", "from": "SHA", "to": "OSA", "max_price": 1000, "max_stops": 0},
+    {"name": "大阪 -> 上海", "from": "OSA", "to": "SHA", "max_price": 1000, "max_stops": 0},
+    {"name": "上海 -> 东京", "from": "SHA", "to": "TYO", "max_price": 1000, "max_stops": 0},
+    {"name": "东京 -> 上海", "from": "TYO", "to": "SHA", "max_price": 1000, "max_stops": 0},
 ]
 
-# 仅当 Travelpayouts 未返回具体机场时的兜底映射
 CITY_TO_AIRPORTS = {
     "SHA": "PVG,SHA",
     "OSA": "KIX,ITM",
@@ -41,14 +40,15 @@ def get_next_months(n=12):
             y += 1
     return months
 
-def scan_oneway_month(origin, destination, month, direct_only):
+def scan_oneway_month(origin, destination, month):
     url = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
     params = {
         "origin": origin,
         "destination": destination,
         "departure_at": month,
         "one_way": "true",
-        "direct": "true" if direct_only else "false",
+        "direct": "false",     # 拉取全部缓存，避免 direct=true 导致无缓存返回空
+        "market": TP_MARKET,
         "currency": "cny",
         "sorting": "price",
         "limit": 1000,
@@ -59,7 +59,6 @@ def scan_oneway_month(origin, destination, month, direct_only):
     return resp.json().get("data", [])
 
 def verify_with_serpapi(origin_airport, dest_airport, dep_date, max_stops):
-    """用具体机场代码在 Google Flights 上复核实时价格"""
     if not SERPAPI_KEY:
         return None
     params = {
@@ -69,13 +68,14 @@ def verify_with_serpapi(origin_airport, dest_airport, dep_date, max_stops):
         "outbound_date": dep_date,
         "currency": "CNY",
         "hl": "zh-cn",
-        "type": 2,  # 单程
-        "stops": 1 if max_stops == 0 else 0,  # SerpApi: 1=仅直飞, 0=不限
+        "type": 2,
+        "stops": 1 if max_stops == 0 else 0,
         "api_key": SERPAPI_KEY,
     }
     try:
         resp = requests.get("https://serpapi.com/search.json", params=params, timeout=30)
         if resp.status_code != 200:
+            print(f"  [SerpApi] HTTP {resp.status_code}: {resp.text[:200]}")
             return None
         data = resp.json()
         candidates = [c for c in (data.get("best_flights", []) + data.get("other_flights", [])) if "price" in c]
@@ -86,50 +86,71 @@ def verify_with_serpapi(origin_airport, dest_airport, dep_date, max_stops):
             "price": cheapest["price"],
             "url": data.get("search_metadata", {}).get("google_flights_url", ""),
         }
-    except Exception:
+    except Exception as e:
+        print(f"  [SerpApi] 异常: {e}")
         return None
 
 def send_notification(text):
+    sent_ok = False
     if TG_BOT_TOKEN and TG_CHAT_ID:
-        requests.post(
+        resp = requests.post(
             f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage",
             json={"chat_id": TG_CHAT_ID, "text": text, "disable_web_page_preview": True},
             timeout=15,
         )
+        print(f"  [Telegram 推送响应] HTTP {resp.status_code}: {resp.text[:200]}")
+        resp.raise_for_status()
+        sent_ok = True
     if FEISHU_WEBHOOK:
-        requests.post(FEISHU_WEBHOOK, json={"msg_type": "text", "content": {"text": text}}, timeout=15)
+        resp = requests.post(FEISHU_WEBHOOK, json={"msg_type": "text", "content": {"text": text}}, timeout=15)
+        print(f"  [飞书推送响应] HTTP {resp.status_code}: {resp.text[:200]}")
+        resp.raise_for_status()
+        sent_ok = True
+    return sent_ok
 
 def main():
+    if not (FEISHU_WEBHOOK or (TG_BOT_TOKEN and TG_CHAT_ID)):
+        raise RuntimeError("未检测到通知配置！请检查 GitHub Secrets 中的 TG_BOT_TOKEN 和 TG_CHAT_ID。")
+
     history = {}
     if os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, "r", encoding="utf-8") as f:
             history = json.load(f)
 
-    # 自动清理已过期的历史记录
     today_str = date.today().isoformat()
     history = {k: v for k, v in history.items() if v.get("dep_date", "9999-99-99") >= today_str}
+    print(f"当前有效历史记录数: {len(history)}")
 
     months = get_next_months(MONTHS_AHEAD)
     updated = False
 
     for route in WATCH_ROUTES:
-        direct_only = (route["max_stops"] == 0)
+        raw_total = 0
+        stops_ok_total = 0
+        min_seen = None
         candidates = []
 
         for month in months:
             try:
-                items = scan_oneway_month(route["from"], route["to"], month, direct_only)
+                items = scan_oneway_month(route["from"], route["to"], month)
             except Exception as e:
                 print(f"[{route['name']}] {month} 查询失败: {e}")
                 continue
 
+            raw_total += len(items)
             for item in items:
                 if item.get("transfers", 0) > route["max_stops"]:
                     continue
+                stops_ok_total += 1
+
+                dep_date = item["departure_at"][:10]
+                if dep_date < today_str:
+                    continue
+
+                if min_seen is None or item["price"] < min_seen[0]:
+                    min_seen = (item["price"], dep_date)
+
                 if item["price"] <= route["max_price"]:
-                    dep_date = item["departure_at"][:10]
-                    if dep_date < today_str:
-                        continue
                     candidates.append({
                         "dep_date": dep_date,
                         "price": item["price"],
@@ -140,10 +161,13 @@ def main():
                         "link": "https://www.aviasales.com" + item.get("link", ""),
                     })
 
-        # 按价格从低到高排序，同一天只保留最低价
+        print(f"[{route['name']}] 12个月原始缓存={raw_total}条 | 符合经停={stops_ok_total}条 | 最低价={min_seen} | 低于¥{route['max_price']}={len(candidates)}条")
+
         candidates.sort(key=lambda x: x["price"])
         seen_dates = set()
         unique_deals = []
+        skipped_by_history = 0
+
         for c in candidates:
             if c["dep_date"] in seen_dates:
                 continue
@@ -154,14 +178,19 @@ def main():
             if last_price is None or c["price"] <= last_price - PRICE_DROP_STEP:
                 c["key"] = key
                 unique_deals.append(c)
+            else:
+                skipped_by_history += 1
+
+        if skipped_by_history > 0:
+            print(f"  -> 有 {skipped_by_history} 个日期因 history.json 已记录且未再降价而被跳过")
 
         if not unique_deals:
-            print(f"[{route['name']}] 未来一年暂无新特价")
             continue
 
-        # 组装推送列表（若配置了 SerpApi，对最便宜的前几个做实价复核）
         lines = []
+        pending_history = []
         verified_count = 0
+
         for d in unique_deals:
             final_price = d["price"]
             url_to_show = d["link"]
@@ -171,16 +200,13 @@ def main():
                 real = verify_with_serpapi(d["origin_airport"], d["dest_airport"], d["dep_date"], route["max_stops"])
                 if real:
                     if real["price"] > route["max_price"] * 1.1:
-                        print(f"[{route['name']}] {d['dep_date']} 缓存过期 (¥{d['price']} -> 实时¥{real['price']})")
+                        print(f"  -> {d['dep_date']} 缓存过期 (¥{d['price']} -> 实时¥{real['price']})")
                         continue
                     final_price = real["price"]
                     if real["url"]:
                         url_to_show = real["url"]
 
-            history[d["key"]] = {"price": final_price, "dep_date": d["dep_date"]}
-            updated = True
-
-            # 消息中最多展示前 8 条，避免过长
+            pending_history.append((d["key"], final_price, d["dep_date"]))
             if len(lines) < 8:
                 stop_txt = "直飞" if d["transfers"] == 0 else f"{d['transfers']}经停"
                 lines.append(
@@ -188,13 +214,16 @@ def main():
                 )
 
         if lines:
-            extra = f"\n（另有 {len(unique_deals) - len(lines)} 个特价日期已同步记录）" if len(unique_deals) > len(lines) else ""
+            extra = f"\n（另有 {len(pending_history) - len(lines)} 个特价日期已同步记录）" if len(pending_history) > len(lines) else ""
             msg = (
                 f"✈️ 单程特价汇总：{route['name']}（≤¥{route['max_price']}）\n"
                 + "\n".join(lines)
                 + extra
             )
-            send_notification(msg)
+            if send_notification(msg):
+                for k, p, dt in pending_history:
+                    history[k] = {"price": p, "dep_date": dt}
+                updated = True
 
     if updated:
         with open(HISTORY_FILE, "w", encoding="utf-8") as f:
