@@ -17,10 +17,10 @@ TP_MARKET = "us"
 
 # 先设为 1000 方便你立刻测试收到推送；测通后可改回你自己的心理价位（如 600~800）
 WATCH_ROUTES = [
-    {"name": "上海 -> 大阪", "from": "SHA", "to": "OSA", "max_price": 1000, "max_stops": 0},
-    {"name": "大阪 -> 上海", "from": "OSA", "to": "SHA", "max_price": 1000, "max_stops": 0},
-    {"name": "上海 -> 东京", "from": "SHA", "to": "TYO", "max_price": 1000, "max_stops": 0},
-    {"name": "东京 -> 上海", "from": "TYO", "to": "SHA", "max_price": 1000, "max_stops": 0},
+    {"name": "上海 -> 大阪", "from": "SHA", "to": "OSA", "max_price": 800, "max_stops": 0},
+    {"name": "大阪 -> 上海", "from": "OSA", "to": "SHA", "max_price": 800, "max_stops": 0},
+    {"name": "上海 -> 东京", "from": "SHA", "to": "TYO", "max_price": 800, "max_stops": 0},
+    {"name": "东京 -> 上海", "from": "TYO", "to": "SHA", "max_price": 800, "max_stops": 0},
 ]
 
 CITY_TO_AIRPORTS = {
