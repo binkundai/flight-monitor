@@ -4,7 +4,7 @@ on:
   schedule:
     # GitHub 使用 UTC 时间（北京时间 = UTC + 8）
     # 下面代表：每周五 北京时间 18:17 自动运行一次（下班前抽一次周末盲盒）
-    - cron: '17 10 * * *'
+    - cron: '0 7 * * *'
   workflow_dispatch: # 允许你在网页端随时手动点按钮抽一次
 
 jobs:
