@@ -13,8 +13,9 @@ TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 MONTHS_AHEAD = 12
 PRICE_DROP_STEP = 30
 MAX_VERIFY_PER_ROUTE = 3
-TP_MARKET = "us"  # 可尝试 "us" / "cn" / "ru"
+TP_MARKET = "us"
 
+# 先设为 1000 方便你立刻测试收到推送；测通后可改回你自己的心理价位（如 600~800）
 WATCH_ROUTES = [
     {"name": "上海 -> 大阪", "from": "SHA", "to": "OSA", "max_price": 1000, "max_stops": 0},
     {"name": "大阪 -> 上海", "from": "OSA", "to": "SHA", "max_price": 1000, "max_stops": 0},
@@ -47,7 +48,7 @@ def scan_oneway_month(origin, destination, month):
         "destination": destination,
         "departure_at": month,
         "one_way": "true",
-        "direct": "false",     # 拉取全部缓存，避免 direct=true 导致无缓存返回空
+        "direct": "false",
         "market": TP_MARKET,
         "currency": "cny",
         "sorting": "price",
@@ -151,6 +152,7 @@ def main():
                     min_seen = (item["price"], dep_date)
 
                 if item["price"] <= route["max_price"]:
+                    short_link = item.get("link", "").split("?")[0]
                     candidates.append({
                         "dep_date": dep_date,
                         "price": item["price"],
@@ -158,7 +160,7 @@ def main():
                         "dest_airport": item.get("destination_airport") or CITY_TO_AIRPORTS[route["to"]],
                         "airline": item.get("airline", ""),
                         "transfers": item.get("transfers", 0),
-                        "link": "https://www.aviasales.com" + item.get("link", ""),
+                        "link": "https://www.aviasales.com" + short_link,
                     })
 
         print(f"[{route['name']}] 12个月原始缓存={raw_total}条 | 符合经停={stops_ok_total}条 | 最低价={min_seen} | 低于¥{route['max_price']}={len(candidates)}条")
