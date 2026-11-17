@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>上海出发特价机票雷达看板</title>
+  <style>
+    :root {
+      --bg: #f5f7fb; --card: #ffffff; --text: #1e293b; --muted: #64748b;
+      --border: #e2e8f0; --primary: #2563eb; --danger: #dc2626; --success: #059669;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 18px; }
+    h1 { margin: 0; font-size: 22px; }
+    .meta { font-size: 13px; color: var(--muted); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .stat-value { font-size: 22px; font-weight: 700; }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .tab-btn { border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 8px 16px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 500; }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .filters { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .field input, .field select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: #fff; }
+    .check-row { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; font-size: 14px; cursor: pointer; }
+    .check-row input { width: auto; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+    th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+    th { background: #f8fafc; font-size: 12px; color: var(--muted); font-weight: 600; }
+    tr:hover td { background: #f8fafc; }
+    .price { font-size: 16px; font-weight: 700; color: var(--danger); }
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-left: 4px; }
+    .b-radar { background: #fee2e2; color: #b91c1c; }
+    .b-pop { background: #dbeafe; color: #1d4ed8; }
+    .b-ow { background: #f1f5f9; color: #475569; }
+    .b-rt { background: #ecfdf5; color: #047857; }
+    .btn-link { display: inline-block; padding: 5px 10px; background: var(--primary); color: #fff; text-decoration: none; border-radius: 6px; font-size: 12px; }
+    .btn-link:hover { opacity: 0.9; }
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>✈️ 上海出发特价机票雷达看板</h1>
+        <div class="meta" id="updatedAt">正在加载最新数据...</div>
+      </div>
+      <button class="tab-btn" onclick="resetFilters()">重置筛选</button>
+    </header>
+
+    <div class="stats">
+      <div class="stat-card"><div class="stat-label">收录报价总数</div><div class="stat-value" id="statTotal">-</div></div>
+      <div class="stat-card"><div class="stat-label">🔥 异常低价数</div><div class="stat-value" id="statAnomalies" style="color:var(--danger)">-</div></div>
+      <div class="stat-card"><div class="stat-label">最低单程价</div><div class="stat-value" id="statMinOW" style="color:var(--success)">-</div></div>
+      <div class="stat-card"><div class="stat-label">最低往返价</div><div class="stat-value" id="statMinRT">-</div></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="all" onclick="setTab('all', this)">📋 全部报价</button>
+      <button class="tab-btn" data-tab="radar" onclick="setTab('radar', this)">🔥 异常低价雷达</button>
+      <button class="tab-btn" data-tab="popular" onclick="setTab('popular', this)">🏆 热门航线性价比榜</button>
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label>目的地 / 航司关键词</label>
+        <input type="text" id="fKeyword" placeholder="如：大阪、OSA、东京、9C" oninput="render()" />
+      </div>
+      <div class="field">
+        <label>最高预算 (¥)</label>
+        <input type="number" id="fMaxPrice" placeholder="不限" oninput="render()" />
+      </div>
+      <div class="field">
+        <label>行程类型</label>
+        <select id="fTripType" onchange="render()">
+          <option value="all">全部（单程 + 往返）</option>
+          <option value="ow">仅看单程</option>
+          <option value="rt">仅看往返</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>经停筛选</label>
+        <select id="fDirect" onchange="render()">
+          <option value="all">全部航班</option>
+          <option value="direct">仅看直飞</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>出发最早日期</label>
+        <input type="date" id="fDateStart" onchange="render()" />
+      </div>
+      <div class="field">
+        <label>出发最晚日期</label>
+        <input type="date" id="fDateEnd" onchange="render()" />
+      </div>
+      <div class="field">
+        <label>排序方式</label>
+        <select id="fSort" onchange="render()">
+          <option value="price_asc">价格：从低到高</option>
+          <option value="price_desc">价格：从高到低</option>
+          <option value="date_asc">出发日期：由近到远</option>
+          <option value="discount_desc">折扣力度：省钱最多</option>
+          <option value="popular_asc">热门度优先</option>
+        </select>
+      </div>
+      <label class="check-row">
+        <input type="checkbox" id="fWeekend" onchange="render()" />
+        仅看周五/周六出发
+      </label>
+    </div>
+
+    <div class="toolbar">
+      <span id="resultCount">共 0 条匹配结果</span>
+      <span>💡 数据每逢定时任务自动更新</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>目的地</th>
+            <th>类型</th>
+            <th>价格 &amp; 折扣基准</th>
+            <th>出发 / 返程日期</th>
+            <th>机场 &amp; 航司</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="emptyTip" style="display:none;">没有符合当前筛选条件的机票，请放宽条件试试</div>
+    </div>
+  </div>
+
+  <script>
+    let allDeals = [];
+    let activeTab = "all";
+
+    function esc(str) {
+      return String(str || "").replace(/[&<>"']/g, s => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[s]));
+    }
+
+    function setTab(tab, btn) {
+      activeTab = tab;
+      document.querySelectorAll(".tabs .tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      if (tab === "radar") document.getElementById("fSort").value = "discount_desc";
+      else if (tab === "popular") document.getElementById("fSort").value = "popular_asc";
+      else document.getElementById("fSort").value = "price_asc";
+      render();
+    }
+
+    function resetFilters() {
+      document.getElementById("fKeyword").value = "";
+      document.getElementById("fMaxPrice").value = "";
+      document.getElementById("fTripType").value = "all";
+      document.getElementById("fDirect").value = "all";
+      document.getElementById("fDateStart").value = "";
+      document.getElementById("fDateEnd").value = "";
+      document.getElementById("fWeekend").checked = false;
+      render();
+    }
+
+    function getWeekdayLabel(dateStr) {
+      const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+      const d = new Date(dateStr + "T00:00:00");
+      return isNaN(d) ? { label: "", day: -1 } : { label: days[d.getDay()], day: d.getDay() };
+    }
+
+    function render() {
+      const kw = document.getElementById("fKeyword").value.trim().toLowerCase();
+      const maxP = Number(document.getElementById("fMaxPrice").value) || Infinity;
+      const tripType = document.getElementById("fTripType").value;
+      const directMode = document.getElementById("fDirect").value;
+      const dStart = document.getElementById("fDateStart").value;
+      const dEnd = document.getElementById("fDateEnd").value;
+      const weekendOnly = document.getElementById("fWeekend").checked;
+      const sortBy = document.getElementById("fSort").value;
+
+      let list = allDeals.filter(d => {
+        if (activeTab === "radar" && !d.is_anomaly) return false;
+        if (activeTab === "popular" && !d.is_popular) return false;
+        if (kw) {
+          const hay = `${d.dest_name} ${d.destination} ${d.dest_airport} ${d.airline}`.toLowerCase();
+          if (!hay.includes(kw)) return false;
+        }
+        if (d.price > maxP) return false;
+        if (tripType === "ow" && !d.one_way) return false;
+        if (tripType === "rt" && d.one_way) return false;
+        if (directMode === "direct" && d.transfers > 0) return false;
+        if (dStart && d.dep_date < dStart) return false;
+        if (dEnd && d.dep_date > dEnd) return false;
+        if (weekendOnly) {
+          const wd = getWeekdayLabel(d.dep_date).day;
+          if (wd !== 5 && wd !== 6) return false;
+        }
+        return true;
+      });
+
+      list.sort((a, b) => {
+        if (sortBy === "price_asc") return a.price - b.price;
+        if (sortBy === "price_desc") return b.price - a.price;
+        if (sortBy === "date_asc") return a.dep_date.localeCompare(b.dep_date);
+        if (sortBy === "discount_desc") return (b.discount_pct - a.discount_pct) || (a.price - b.price);
+        if (sortBy === "popular_asc") return (a.popular_rank - b.popular_rank) || (a.price - b.price);
+        return 0;
+      });
+
+      document.getElementById("resultCount").textContent = `共 ${list.length} 条匹配结果`;
+      const tbody = document.getElementById("tbody");
+      const emptyTip = document.getElementById("emptyTip");
+
+      if (list.length === 0) {
+        tbody.innerHTML = "";
+        emptyTip.style.display = "block";
+        return;
+      }
+      emptyTip.style.display = "none";
+
+      // 最多渲染前 300 条保持浏览器丝滑
+      tbody.innerHTML = list.slice(0, 300).map(d => {
+        const wd = getWeekdayLabel(d.dep_date).label;
+        const dateHtml = d.one_way
+          ? `${esc(d.dep_date)} <span style="color:var(--muted)">(${wd})</span>`
+          : `${esc(d.dep_date)} (${wd})<br><span style="color:var(--muted);font-size:12px;">返: ${esc(d.ret_date)}</span>`;
+
+        const badges = [
+          d.is_anomaly ? `<span class="badge b-radar">${d.discount_pct > 0 ? d.discount_pct + "% OFF" : "促销"}</span>` : "",
+          d.is_popular ? `<span class="badge b-pop">热门</span>` : "",
+        ].join("");
+
+        const baseHtml = d.baseline_price
+          ? `<div style="font-size:12px;color:var(--muted)">中位均价 ¥${d.baseline_price}${d.save_amount > 0 ? ` · 省¥${d.save_amount}` : ""}</div>`
+          : "";
+
+        const stopTxt = d.transfers === 0 ? "直飞" : `${d.transfers}经停`;
+        return `
+          <tr>
+            <td><strong>${esc(d.dest_name)}</strong> <span style="color:var(--muted)">(${esc(d.destination)})</span>${badges}</td>
+            <td><span class="badge ${d.one_way ? "b-ow" : "b-rt"}">${d.one_way ? "单程" : "往返"}</span></td>
+            <td><span class="price">¥${d.price}</span>${baseHtml}</td>
+            <td>${dateHtml}</td>
+            <td>${esc(d.origin_airport)} → ${esc(d.dest_airport)}<br><span style="font-size:12px;color:var(--muted)">${esc(d.airline)} · ${stopTxt}</span></td>
+            <td><a class="btn-link" href="${esc(d.link)}" target="_blank" rel="noopener">查看购票</a></td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    fetch("./data.json?t=" + Date.now())
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(data => {
+        document.getElementById("updatedAt").textContent = `最近更新：${data.updated_at || "-"}`;
+        document.getElementById("statTotal").textContent = data.stats?.total ?? "-";
+        document.getElementById("statAnomalies").textContent = data.stats?.anomalies ?? "-";
+        document.getElementById("statMinOW").textContent = data.stats?.min_oneway ? `¥${data.stats.min_oneway}` : "-";
+        document.getElementById("statMinRT").textContent = data.stats?.min_roundtrip ? `¥${data.stats.min_roundtrip}` : "-";
+        allDeals = data.deals || [];
+        render();
+      })
+      .catch(err => {
+        document.getElementById("updatedAt").textContent = "加载数据失败，请确保通过 Vercel / GitHub Pages 访问，且已运行过一次 radar.yml (" + err.message + ")";
+      });
+  </script>
+</body>
+</html>
