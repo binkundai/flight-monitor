@@ -48,18 +48,17 @@ def get_city_names():
     return mapping
 
 def explore_deals():
-    url = "https://api.travelpayouts.com/aviasales/v3/search_by_price_range"
+    url = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates"
     params = {
         "origin": ORIGIN,
-        "destination": "-",
-        "value_min": 1,
-        "value_max": MAX_BUDGET,
+        # 不传 destination 参数 + unique=true，直接拉取上海出发全网最便宜目的地榜单
+        "unique": "true",
+        "sorting": "price",
         "one_way": "true" if ONE_WAY else "false",
         "direct": "true" if DIRECT_ONLY else "false",
-        "locale": "en",
         "market": "us",
         "currency": "cny",
-        "limit": 30,          # 官方上限为 30
+        "limit": 100,
         "page": 1,
         "token": TP_TOKEN,
     }
@@ -67,7 +66,9 @@ def explore_deals():
     if resp.status_code != 200:
         print(f"API 返回异常 ({resp.status_code}): {resp.text}")
     resp.raise_for_status()
-    return resp.json().get("data", [])
+    items = resp.json().get("data", [])
+    # 在本地过滤出预算范围内的航班
+    return [d for d in items if d.get("price", 999999) <= MAX_BUDGET]
 
 def build_link(d):
     raw_link = d.get("link", "").split("?")[0]
