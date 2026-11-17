@@ -21,12 +21,18 @@ WATCH_ROUTES = [
     {"name": "大阪 -> 上海", "from": "OSA", "to": "SHA", "max_price": 850, "max_stops": 0},
     {"name": "上海 -> 东京", "from": "SHA", "to": "TYO", "max_price": 850, "max_stops": 0},
     {"name": "东京 -> 上海", "from": "TYO", "to": "SHA", "max_price": 850, "max_stops": 0},
+    {"name": "上海 -> 昆明", "from": "SHA", "to": "KMG", "max_price": 500, "max_stops": 0},
+    {"name": "昆明 -> 上海", "from": "KMG", "to": "SHA", "max_price": 500, "max_stops": 0},
+    {"name": "上海 -> 福冈", "from": "SHA", "to": "FUK", "max_price": 850, "max_stops": 0},
+    {"name": "福冈 -> 上海", "from": "FUK", "to": "SHA", "max_price": 850, "max_stops": 0},
 ]
 
 CITY_TO_AIRPORTS = {
     "SHA": "PVG,SHA",
     "OSA": "KIX,ITM",
     "TYO": "NRT,HND",
+    "KMG": "KMG",
+    "FUK": "FUK",
 }
 
 def get_next_months(n=12):
