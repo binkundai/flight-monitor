@@ -16,9 +16,9 @@ MAX_VERIFY_PER_ROUTE = 3      # 每条航线每次最多用 SerpApi 复核前 3 
 
 # 4 个单向监控方向（可按直飞/中转和税费差异微调阈值）
 WATCH_ROUTES = [
-    {"name": "上海 -> 大阪", "from": "SHA", "to": "OSA", "max_price": 600, "max_stops": 0},
-    {"name": "大阪 -> 上海", "from": "OSA", "to": "SHA", "max_price": 750, "max_stops": 0},
-    {"name": "上海 -> 东京", "from": "SHA", "to": "TYO", "max_price": 650, "max_stops": 0},
+    {"name": "上海 -> 大阪", "from": "SHA", "to": "OSA", "max_price": 800, "max_stops": 0},
+    {"name": "大阪 -> 上海", "from": "OSA", "to": "SHA", "max_price": 800, "max_stops": 0},
+    {"name": "上海 -> 东京", "from": "SHA", "to": "TYO", "max_price": 800, "max_stops": 0},
     {"name": "东京 -> 上海", "from": "TYO", "to": "SHA", "max_price": 800, "max_stops": 0},
 ]
 
