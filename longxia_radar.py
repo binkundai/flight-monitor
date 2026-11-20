@@ -288,7 +288,7 @@ def main():
         json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
     print(f"扫描完成！共获取 {len(all_deals)} 条每日实时最低价，其中达标特价 {len(hit_deals)} 条")
 
-    # Telegram 报警去重推送
+# Telegram 报警去重推送
     history = {}
     if os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, "r", encoding="utf-8") as f:
@@ -322,7 +322,7 @@ def main():
         if DASHBOARD_URL:
             lines.append(f"\n📊 全部日期日历看板：{DASHBOARD_URL}")
 
-try:
+        try:
             tg_resp = requests.post(
                 f"https://api.telegram.org/bot{TG_BOT_TOKEN.strip()}/sendMessage",
                 json={"chat_id": TG_CHAT_ID.strip(), "text": "\n".join(lines), "disable_web_page_preview": True},
