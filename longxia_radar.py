@@ -322,16 +322,20 @@ def main():
         if DASHBOARD_URL:
             lines.append(f"\n📊 全部日期日历看板：{DASHBOARD_URL}")
 
-        requests.post(
-            f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage",
-            json={"chat_id": TG_CHAT_ID, "text": "\n".join(lines), "disable_web_page_preview": True},
-            timeout=15,
-        ).raise_for_status()
-
-        for k, d in new_hits:
-            history[k] = {"price": d["price"], "dep_date": d["dep_date"]}
-    elif not new_hits:
-        print("本次暂无新增达标特价")
+try:
+            tg_resp = requests.post(
+                f"https://api.telegram.org/bot{TG_BOT_TOKEN.strip()}/sendMessage",
+                json={"chat_id": TG_CHAT_ID.strip(), "text": "\n".join(lines), "disable_web_page_preview": True},
+                timeout=15,
+            )
+            if tg_resp.status_code != 200:
+                print(f"[Telegram 推送失败] HTTP {tg_resp.status_code}: {tg_resp.text}")
+            else:
+                print("[Telegram 推送成功]")
+                for k, d in new_hits:
+                    history[k] = {"price": d["price"], "dep_date": d["dep_date"]}
+        except Exception as e:
+            print(f"[Telegram 推送异常] {e}")
 
     with open(HISTORY_FILE, "w", encoding="utf-8") as f:
         json.dump(history, f, ensure_ascii=False, indent=2)
