@@ -26,8 +26,8 @@ EUROPE_THRESHOLD = 1800      # 欧洲线默认同为1000（若想放宽欧洲报
 
 PRICE_DROP_STEP = 30
 DIRECT_ONLY_NOTIFY = False
-MAX_WORKERS = 3
-MIN_INTERVAL = 0.24          # 全局限速 ≈ 4.16 QPS（安全低于 5 QPS 上限）
+MAX_WORKERS = 18
+MIN_INTERVAL = 0.26          # 全局限速 ≈ 4.16 QPS（安全低于 5 QPS 上限）
 
 # 国内 32 个城市
 DOMESTIC_CITIES = {
@@ -59,7 +59,8 @@ EUROPE_CITIES = {
 ALL_CITY_NAMES = {"SHA": "上海", **DOMESTIC_CITIES, **ASIA_INTL_CITIES, **EUROPE_CITIES}
 
 _rate_lock = threading.Lock()
-_last_req_ts = 0.0
+_next_req_ts = 0.0
+_rate_limit_hits = 0
 _thread_local = threading.local()
 
 def get_session():
@@ -73,15 +74,19 @@ def get_session():
     return _thread_local.session
 
 def throttle():
-    global _last_req_ts
+    """预约发包时间槽并在锁外休眠，严格保证发包速率 <= 3.84 QPS"""
+    global _next_req_ts
     with _rate_lock:
         now = time.monotonic()
-        wait = MIN_INTERVAL - (now - _last_req_ts)
-        if wait > 0:
-            time.sleep(wait)
-        _last_req_ts = time.monotonic()
+        if _next_req_ts < now:
+            _next_req_ts = now
+        wait = _next_req_ts - now
+        _next_req_ts += MIN_INTERVAL
+    if wait > 0:
+        time.sleep(wait)
 
 def search_day(trip_mode, from_code, to_code, depart_date):
+    global _rate_limit_hits
     payload = {
         "trip_mode": trip_mode,
         "trip_type": "oneway",
@@ -90,28 +95,29 @@ def search_day(trip_mode, from_code, to_code, depart_date):
         "cabin_class": "economy",
         "depart_date": depart_date,
         "passengers": {"adult": 1, "child": 0, "infant": 0},
-        "page_size": 5,
+        "page_size": 3,
         "sort_by": "price",
     }
     session = get_session()
     for attempt in range(3):
         throttle()
         try:
-            resp = session.post(API_URL, json=payload, timeout=20)
+            resp = session.post(API_URL, json=payload, timeout=(5, 12))
             if resp.status_code == 429:
-                time.sleep(1.5 * (attempt + 1))
+                with _rate_lock:
+                    _rate_limit_hits += 1
+                time.sleep(2.0 * (attempt + 1))
                 continue
             if resp.status_code != 200:
-                print(f"[HTTP {resp.status_code}] {from_code}->{to_code} {depart_date}: {resp.text[:120]}")
                 return []
             body = resp.json()
             if body.get("code") != 0:
                 return []
             return (body.get("data") or {}).get("flights") or []
-        except Exception as e:
-            if attempt == 2:
-                print(f"[请求异常] {from_code}->{to_code} {depart_date}: {e}")
-            time.sleep(1.0)
+        except Exception:
+            if attempt >= 1:  # 超时/网络错误最多重试1次，防止死等拖慢整个池子
+                return []
+            time.sleep(0.5)
     return []
 
 def extract_flight_record(flight, task):
@@ -232,10 +238,17 @@ def main():
     print(f"准备执行龙虾全量实时扫描：共 {len(tasks)} 个航段日期任务（预计耗时约 {int(len(tasks) * MIN_INTERVAL / 60)} 分钟）")
 
     all_deals = []
+    t0 = time.monotonic()
+    total_tasks = len(tasks)
+    done_cnt = 0
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(run_task, t) for t in tasks]
         for fut in as_completed(futures):
             all_deals.extend(fut.result())
+            done_cnt += 1
+            if done_cnt % 200 == 0 or done_cnt == total_tasks:
+                elapsed = max(time.monotonic() - t0, 0.1)
+                print(f"[进度] {done_cnt}/{total_tasks} | 耗时 {elapsed:.0f}s | 速率 {done_cnt/elapsed:.2f} 次/秒 | 429限流 {_rate_limit_hits} 次", flush=True)
 
     # 计算每条航线中位数基准价
     grouped = {}
