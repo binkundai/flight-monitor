@@ -1,0 +1,40 @@
+name: Longxia Realtime Flight Radar
+
+on:
+  schedule:
+    # 每天 北京时间 08:15 和 20:15 运行（每天共消耗约 4,800 次，低于 10,000 日限额）
+    - cron: '15 0,12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan-longxia:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Longxia realtime radar
+        env:
+          LONGXIA_TOKEN: ${{ secrets.LONGXIA_TOKEN }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+        run: python longxia_radar.py
+
+      - name: Commit data and history
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/data.json history_longxia.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Longxia realtime flight data" && git push)
