@@ -17,35 +17,46 @@ HOME_CITY = "SHA"
 DATA_FILE = "docs/data.json"
 HISTORY_FILE = "history_longxia.json"
 
-# 扫描天数与价格阈值（含税总价 lowest_price 严格小于该值才报警）
-DOMESTIC_DAYS = 30
-DOMESTIC_THRESHOLD = 500
-INTL_DAYS = 90
-INTL_THRESHOLD = 1000
+# 扫描天数与价格阈值（含税总价 lowest_price 严格小于该值才触发 Telegram 报警）
+DOMESTIC_DAYS = 45
+DOMESTIC_THRESHOLD = 550
+INTL_DAYS = 120
+INTL_THRESHOLD = 1200
+EUROPE_THRESHOLD = 1800      # 欧洲线默认同为1000（若想放宽欧洲报警，可单独改如 1800）
 
-PRICE_DROP_STEP = 30         # 同航线同日期再降至少 30 元才重复推送
-DIRECT_ONLY_NOTIFY = False   # True=Telegram只推直飞; False=直飞中转都推（建议False，看板可再筛选）
+PRICE_DROP_STEP = 30
+DIRECT_ONLY_NOTIFY = False
 MAX_WORKERS = 3
-MIN_INTERVAL = 0.27          # 全局限速 ≈ 3.7 QPS，安全低于 5 QPS 上限
+MIN_INTERVAL = 0.24          # 全局限速 ≈ 4.16 QPS（安全低于 5 QPS 上限）
 
-# 国内 10 个大城市
+# 国内 32 个城市
 DOMESTIC_CITIES = {
-    "BJS": "北京", "CAN": "广州", "SZX": "深圳", "CTU": "成都", "CKG": "重庆",
+    "CAN": "广州", "SZX": "深圳", "CTU": "成都", "CKG": "重庆",
     "KMG": "昆明", "XIY": "西安", "SYX": "三亚", "XMN": "厦门", "TAO": "青岛",
     "NNG": "南宁", "KWL": "桂林", "HAK": "海口", "FOC": "福州", "LJG": "丽江",
-    "KWE": "贵阳", "DLC": "大连", "SHE": "沈阳", "CGQ": "长春", "HRB": "哈尔滨",
+    "KWE": "贵阳", "DLC": "大连", "SHE": "沈阳", "CGQ": "长春", 
     "LHW": "兰州", "TYN": "太原", "TSN": "天津", "NBS": "白山", "URC": "乌鲁木齐",
     "LXA": "拉萨", "SWA": "汕头", "KHN": "南昌",
     "LYA": "洛阳", "XNN": "西宁", "YZY": "张掖", "AAT": "阿勒泰",
 }
 
-# 日本 & 东南亚 10 个热门城市
-INTL_CITIES = {
-    "OSA": "大阪", "TYO": "东京", "FUK": "福冈", "SPK": "札幌", "OKA": "冲绳",
-    "BKK": "曼谷", "CNX": "清迈", "HKT": "普吉岛", "KUL": "吉隆坡", "SIN": "新加坡",
+# 亚洲：日本 / 东南亚 / 南亚（共 19 城，已去掉新加坡 SIN）
+ASIA_INTL_CITIES = {
+    "OSA": "大阪", "TYO": "东京", "FUK": "福冈", "SPK": "札幌", "OKA": "冲绳","NGO": "名古屋",
+    "BKK": "曼谷", "CNX": "清迈", "HKT": "普吉岛",
+    "KUL": "吉隆坡", "BKI": "亚庇", "TWU": "斗湖/仙本那", "PEN": "槟城", "JHB": "新山",
+    "DPS": "巴厘岛", "JKT": "雅加达",
+    "SGN": "胡志明", "DAD": "岘港", "CXR": "芽庄",
+    "KTM": "加德满都",
 }
 
-ALL_CITY_NAMES = {"SHA": "上海", **DOMESTIC_CITIES, **INTL_CITIES}
+# 欧洲 / 土耳其（共 8 城）
+EUROPE_CITIES = {
+    "BCN": "巴塞罗那", "MAD": "马德里", "ROM": "罗马", "MIL": "米兰",
+    "ATH": "雅典", "IST": "伊斯坦布尔", "BUD": "布达佩斯", "BEG": "贝尔格莱德",
+}
+
+ALL_CITY_NAMES = {"SHA": "上海", **DOMESTIC_CITIES, **ASIA_INTL_CITIES, **EUROPE_CITIES}
 
 _rate_lock = threading.Lock()
 _last_req_ts = 0.0
@@ -204,12 +215,19 @@ def main():
             tasks.append({"trip_mode": "domestic", "threshold": DOMESTIC_THRESHOLD, "direction": "outbound", "from_code": HOME_CITY, "to_code": city, "dep_date": dt})
             tasks.append({"trip_mode": "domestic", "threshold": DOMESTIC_THRESHOLD, "direction": "inbound", "from_code": city, "to_code": HOME_CITY, "dep_date": dt})
 
-    # 2. 日本 & 东南亚 未来 90 天（双向）
-    for city in INTL_CITIES:
+    # 2. 亚洲国际城市 未来 90 天（双向）
+    for city in ASIA_INTL_CITIES:
         for d in range(1, INTL_DAYS + 1):
             dt = (today + timedelta(days=d)).isoformat()
             tasks.append({"trip_mode": "international", "threshold": INTL_THRESHOLD, "direction": "outbound", "from_code": HOME_CITY, "to_code": city, "dep_date": dt})
             tasks.append({"trip_mode": "international", "threshold": INTL_THRESHOLD, "direction": "inbound", "from_code": city, "to_code": HOME_CITY, "dep_date": dt})
+
+    # 3. 欧洲/土耳其城市 未来 90 天（双向）
+    for city in EUROPE_CITIES:
+        for d in range(1, INTL_DAYS + 1):
+            dt = (today + timedelta(days=d)).isoformat()
+            tasks.append({"trip_mode": "international", "threshold": EUROPE_THRESHOLD, "direction": "outbound", "from_code": HOME_CITY, "to_code": city, "dep_date": dt})
+            tasks.append({"trip_mode": "international", "threshold": EUROPE_THRESHOLD, "direction": "inbound", "from_code": city, "to_code": HOME_CITY, "dep_date": dt})
 
     print(f"准备执行龙虾全量实时扫描：共 {len(tasks)} 个航段日期任务（预计耗时约 {int(len(tasks) * MIN_INTERVAL / 60)} 分钟）")
 
