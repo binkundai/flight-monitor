@@ -4,7 +4,7 @@ on:
   schedule:
     # UTC 22:15 = 北京时间次日 06:15 (早班全量)
     # UTC 10:15 = 北京时间当日 18:15 (晚班临期)
-    - cron: '15 10,22 * * *'
+    - cron: '15 13,23 * * *'
   workflow_dispatch:
     inputs:
       mode:
