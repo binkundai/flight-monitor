@@ -36,9 +36,13 @@ jobs:
           DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
         run: python longxia_radar.py
 
-      - name: Commit data and history
+- name: Commit data and history
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/data.json history_longxia.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Longxia realtime flight data" && git push)
+          if ! git diff --staged --quiet; then
+            git commit -m "Update Longxia realtime flight data"
+            git pull --rebase -X theirs origin main
+            git push
+          fi
