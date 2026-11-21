@@ -2,9 +2,20 @@ name: Longxia Realtime Flight Radar
 
 on:
   schedule:
-    # 每天 北京时间 08:15 运行 1 次（如果你已换成早晚班版 longxia_radar.py，可改为 '15 10,22 * * *'）
-    - cron: '15 0 * * *'
+    # UTC 22:15 = 北京时间次日 06:15 (早班全量)
+    # UTC 10:15 = 北京时间当日 18:15 (晚班临期)
+    - cron: '15 10,22 * * *'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: '扫描模式 (auto=按时间自动, morning=强制早班全量, evening=强制晚班临期)'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - morning
+          - evening
 
 concurrency:
   group: longxia-radar
@@ -35,6 +46,7 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+          SCAN_MODE: ${{ github.event.inputs.mode || 'auto' }}
         run: python longxia_radar.py
 
       - name: Commit data and history
