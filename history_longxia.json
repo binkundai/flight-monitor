@@ -667,10 +667,6 @@
     "price": 439,
     "dep_date": "2026-11-23"
   },
-  "outbound|SHA|XIY|2026-11-22": {
-    "price": 439,
-    "dep_date": "2026-11-22"
-  },
   "outbound|SHA|XIY|2026-11-24": {
     "price": 439,
     "dep_date": "2026-11-24"
@@ -902,10 +898,6 @@
   "inbound|CAN|SHA|2026-12-16": {
     "price": 469,
     "dep_date": "2026-12-16"
-  },
-  "inbound|SZX|SHA|2026-11-22": {
-    "price": 469,
-    "dep_date": "2026-11-22"
   },
   "inbound|SZX|SHA|2026-11-23": {
     "price": 469,
@@ -1226,10 +1218,6 @@
   "outbound|SHA|XMN|2026-12-05": {
     "price": 529,
     "dep_date": "2026-12-05"
-  },
-  "outbound|SHA|TAO|2026-11-22": {
-    "price": 529,
-    "dep_date": "2026-11-22"
   },
   "outbound|SHA|TAO|2026-11-28": {
     "price": 530,
@@ -1927,10 +1915,6 @@
     "price": 800,
     "dep_date": "2027-01-16"
   },
-  "outbound|SHA|HKT|2026-11-22": {
-    "price": 800,
-    "dep_date": "2026-11-22"
-  },
   "inbound|KUL|SHA|2027-01-12": {
     "price": 802,
     "dep_date": "2027-01-12"
@@ -1990,10 +1974,6 @@
   "outbound|SHA|CNX|2026-12-26": {
     "price": 805,
     "dep_date": "2026-12-26"
-  },
-  "outbound|SHA|BKK|2026-11-22": {
-    "price": 806,
-    "dep_date": "2026-11-22"
   },
   "inbound|BKK|SHA|2026-12-22": {
     "price": 806,
@@ -2458,10 +2438,6 @@
   "inbound|BKK|SHA|2026-12-30": {
     "price": 877,
     "dep_date": "2026-12-30"
-  },
-  "inbound|BKK|SHA|2026-11-22": {
-    "price": 878,
-    "dep_date": "2026-11-22"
   },
   "inbound|BKK|SHA|2026-11-23": {
     "price": 878,
@@ -3090,10 +3066,6 @@
   "inbound|CNX|SHA|2027-01-11": {
     "price": 1026,
     "dep_date": "2027-01-11"
-  },
-  "inbound|CNX|SHA|2026-11-22": {
-    "price": 1032,
-    "dep_date": "2026-11-22"
   },
   "inbound|HKT|SHA|2026-11-23": {
     "price": 1032,
@@ -5914,5 +5886,213 @@
   "outbound|SHA|IST|2026-12-16": {
     "price": 1548,
     "dep_date": "2026-12-16"
+  },
+  "inbound|KHN|SHA|2026-12-28": {
+    "price": 390,
+    "dep_date": "2026-12-28"
+  },
+  "inbound|SWA|SHA|2026-12-03": {
+    "price": 399,
+    "dep_date": "2026-12-03"
+  },
+  "inbound|SWA|SHA|2026-12-04": {
+    "price": 399,
+    "dep_date": "2026-12-04"
+  },
+  "outbound|SHA|SWA|2026-12-05": {
+    "price": 399,
+    "dep_date": "2026-12-05"
+  },
+  "inbound|SWA|SHA|2026-12-05": {
+    "price": 399,
+    "dep_date": "2026-12-05"
+  },
+  "outbound|SHA|SWA|2026-12-08": {
+    "price": 399,
+    "dep_date": "2026-12-08"
+  },
+  "inbound|SWA|SHA|2026-12-08": {
+    "price": 399,
+    "dep_date": "2026-12-08"
+  },
+  "inbound|KWE|SHA|2026-12-20": {
+    "price": 439,
+    "dep_date": "2026-12-20"
+  },
+  "inbound|KWE|SHA|2026-12-21": {
+    "price": 439,
+    "dep_date": "2026-12-21"
+  },
+  "inbound|SWA|SHA|2026-12-06": {
+    "price": 439,
+    "dep_date": "2026-12-06"
+  },
+  "inbound|SWA|SHA|2026-12-07": {
+    "price": 439,
+    "dep_date": "2026-12-07"
+  },
+  "outbound|SHA|TYN|2026-11-25": {
+    "price": 440,
+    "dep_date": "2026-11-25"
+  },
+  "outbound|SHA|TYN|2026-11-26": {
+    "price": 440,
+    "dep_date": "2026-11-26"
+  },
+  "outbound|SHA|TYN|2026-11-24": {
+    "price": 442,
+    "dep_date": "2026-11-24"
+  },
+  "outbound|SHA|TYN|2026-11-27": {
+    "price": 450,
+    "dep_date": "2026-11-27"
+  },
+  "inbound|SYX|SHA|2026-12-11": {
+    "price": 459,
+    "dep_date": "2026-12-11"
+  },
+  "inbound|SYX|SHA|2026-12-12": {
+    "price": 459,
+    "dep_date": "2026-12-12"
+  },
+  "outbound|SHA|SWA|2026-12-03": {
+    "price": 459,
+    "dep_date": "2026-12-03"
+  },
+  "outbound|SHA|SWA|2026-12-07": {
+    "price": 459,
+    "dep_date": "2026-12-07"
+  },
+  "inbound|SZX|SHA|2026-12-28": {
+    "price": 469,
+    "dep_date": "2026-12-28"
+  },
+  "outbound|SHA|CKG|2026-12-15": {
+    "price": 469,
+    "dep_date": "2026-12-15"
+  },
+  "outbound|SHA|SWA|2026-12-06": {
+    "price": 469,
+    "dep_date": "2026-12-06"
+  },
+  "outbound|SHA|TAO|2026-12-24": {
+    "price": 480,
+    "dep_date": "2026-12-24"
+  },
+  "outbound|SHA|XMN|2026-11-24": {
+    "price": 482,
+    "dep_date": "2026-11-24"
+  },
+  "inbound|CAN|SHA|2026-12-28": {
+    "price": 489,
+    "dep_date": "2026-12-28"
+  },
+  "outbound|SHA|TAO|2026-12-27": {
+    "price": 489,
+    "dep_date": "2026-12-27"
+  },
+  "inbound|CKG|SHA|2026-12-12": {
+    "price": 499,
+    "dep_date": "2026-12-12"
+  },
+  "inbound|CKG|SHA|2026-12-16": {
+    "price": 499,
+    "dep_date": "2026-12-16"
+  },
+  "inbound|KWE|SHA|2026-12-19": {
+    "price": 499,
+    "dep_date": "2026-12-19"
+  },
+  "inbound|KWE|SHA|2026-12-22": {
+    "price": 499,
+    "dep_date": "2026-12-22"
+  },
+  "inbound|KWE|SHA|2026-12-23": {
+    "price": 499,
+    "dep_date": "2026-12-23"
+  },
+  "inbound|KWE|SHA|2026-12-24": {
+    "price": 499,
+    "dep_date": "2026-12-24"
+  },
+  "inbound|KWE|SHA|2026-12-25": {
+    "price": 499,
+    "dep_date": "2026-12-25"
+  },
+  "outbound|SHA|TAO|2026-12-07": {
+    "price": 536,
+    "dep_date": "2026-12-07"
+  },
+  "outbound|SHA|TAO|2026-12-08": {
+    "price": 536,
+    "dep_date": "2026-12-08"
+  },
+  "outbound|SHA|TAO|2026-12-21": {
+    "price": 536,
+    "dep_date": "2026-12-21"
+  },
+  "inbound|TAO|SHA|2026-12-21": {
+    "price": 536,
+    "dep_date": "2026-12-21"
+  },
+  "outbound|SHA|TAO|2026-12-22": {
+    "price": 536,
+    "dep_date": "2026-12-22"
+  },
+  "inbound|TAO|SHA|2026-12-22": {
+    "price": 536,
+    "dep_date": "2026-12-22"
+  },
+  "outbound|SHA|TAO|2026-12-23": {
+    "price": 536,
+    "dep_date": "2026-12-23"
+  },
+  "inbound|TAO|SHA|2026-12-23": {
+    "price": 536,
+    "dep_date": "2026-12-23"
+  },
+  "inbound|TAO|SHA|2026-12-24": {
+    "price": 536,
+    "dep_date": "2026-12-24"
+  },
+  "outbound|SHA|TAO|2026-12-25": {
+    "price": 536,
+    "dep_date": "2026-12-25"
+  },
+  "inbound|TAO|SHA|2026-12-25": {
+    "price": 536,
+    "dep_date": "2026-12-25"
+  },
+  "outbound|SHA|TAO|2026-12-26": {
+    "price": 536,
+    "dep_date": "2026-12-26"
+  },
+  "inbound|TAO|SHA|2026-12-26": {
+    "price": 536,
+    "dep_date": "2026-12-26"
+  },
+  "inbound|TAO|SHA|2026-12-27": {
+    "price": 536,
+    "dep_date": "2026-12-27"
+  },
+  "outbound|SHA|CKG|2026-12-12": {
+    "price": 549,
+    "dep_date": "2026-12-12"
+  },
+  "inbound|CKG|SHA|2026-12-10": {
+    "price": 549,
+    "dep_date": "2026-12-10"
+  },
+  "outbound|SHA|XIY|2026-12-28": {
+    "price": 549,
+    "dep_date": "2026-12-28"
+  },
+  "inbound|XIY|SHA|2026-12-28": {
+    "price": 549,
+    "dep_date": "2026-12-28"
+  },
+  "outbound|SHA|KWE|2026-12-21": {
+    "price": 549,
+    "dep_date": "2026-12-21"
   }
 }
